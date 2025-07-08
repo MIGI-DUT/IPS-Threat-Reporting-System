@@ -1,3 +1,5 @@
+import glob
+
 import pandas as pd
 import json
 
@@ -158,24 +160,11 @@ def clean_envet_log(file_path):
     return final_df
 
 # 运行清洗过程:
-cleaned_data = clean_envet_log('../downloads/envet_log-20250707170407.json')
-cleaned_data.to_csv('../downloads/cleaned_data.csv', index=False)
+files = glob.glob("../downloads/*envet_log*.json")
+if not files:
+    print("❌ ../downloads/ 目录下未找到匹配 'envet_log*.json' 的文件。")
+    exit()
+file_path = files[0]
 
-# 现在 'cleaned_data' DataFrame 已准备好用于 Matplotlib, Seaborn, Plotly 等可视化工具。
-# 简单的绘图示例 (需要 matplotlib)
-# import matplotlib.pyplot as plt
-# if not cleaned_data.empty:
-#     # 绘制事件随时间的变化
-#     cleaned_data.set_index('timestamp').resample('H').size().plot(title='每小时事件数')
-#     plt.ylabel('事件数量')
-#     plt.show()
-
-#     # classtype 分布的条形图
-#     plt.figure(figsize=(10, 6))
-#     cleaned_data['classtype'].value_counts().plot(kind='bar')
-#     plt.title('Classtype 分布')
-#     plt.xlabel('Classtype')
-#     plt.ylabel('计数')
-#     plt.xticks(rotation=45, ha='right')
-#     plt.tight_layout()
-#     plt.show()
+cleaned_data = clean_envet_log(file_path)
+cleaned_data.to_csv('../temp_files/cleaned_data.csv', index=False)

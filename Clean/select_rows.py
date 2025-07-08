@@ -1,7 +1,7 @@
 import pandas as pd
 
 # 读取 CSV 文件
-df = pd.read_csv('../downloads/cleaned_data.csv')
+df = pd.read_csv('../temp_files/cleaned_data.csv')
 
 # 选择 dns_query 列不为空的行（既排除NaN也排除空字符串）
 col = 'dns_query'
@@ -12,7 +12,7 @@ filtered_df = filtered_df.drop(columns=['src_ip_city', 'dst_ip_city', 'dst_ip_co
                                         'enrichments.src_ip.malicious', 'number', 'enrichments.victim.in_range', 'parsed_method',
                                         'parsed_status_code','parsed_host','parsed_uri'])
 # 保存结果
-filtered_df.to_csv('../downloads/filtered_data.csv', index=False)
+filtered_df.to_csv('../temp_files/filtered_data.csv', index=False)
 
 # 查看前几行验证
 print(filtered_df.head())
