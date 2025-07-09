@@ -1,25 +1,20 @@
-import pandas as pd
-from collections import Counter, defaultdict
 import glob
+import os
+from collections import Counter, defaultdict
 from datetime import datetime
+
 import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
+import numpy as np
+import pandas as pd
 import seaborn as sns
-from reportlab.lib.pagesizes import letter, A4
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle, PageBreak, KeepTogether
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from matplotlib.font_manager import FontProperties
-from reportlab.lib.units import inch, cm
 from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.graphics.shapes import Drawing, Rect, String
-from reportlab.graphics import renderPDF
-import matplotlib.font_manager as fm
-import os
-import io
-import base64
-import numpy as np
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle, PageBreak
 
 plt.rcParams['font.sans-serif'] = ['SimHei']  # 设置中文字体为黑体
 plt.rcParams['axes.unicode_minus'] = False  # 正确显示负号
