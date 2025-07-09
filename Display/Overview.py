@@ -1,3 +1,5 @@
+import glob
+
 import pandas as pd
 from collections import defaultdict
 from datetime import datetime
@@ -7,32 +9,23 @@ import matplotlib.pyplot as plt
 def generate_threat_report(log_file):
     # 读取日志文件
     try:
-        # 尝试不同的编码方式读取Excel文件
-        df = pd.read_excel(log_file, header=0)  # 确保使用第一行作为列名
+        # 使用openpyxl引擎读取Excel文件，避免样式警告
+        df = pd.read_excel(log_file, header=0, engine='openpyxl')
+        print("检测到的列名:", df.columns.tolist())
     except Exception as e:
         return f"Error reading log file: {str(e)}"
 
-    # 检查列名是否正确，打印出来看看
-    print("检测到的列名:", df.columns.tolist())
+    # 检查时间列是否存在
+    time_column = '发现时间'
+    if time_column not in df.columns:
+        return f"错误：在Excel文件中找不到'{time_column}'列"
 
-    # 尝试匹配中文列名或英文列名
-    time_column = None
-    if '发现时间' in df.columns:
-        time_column = '发现时间'
-    elif 'Detection Time' in df.columns:  # 如果有英文列名
-        time_column = 'Detection Time'
-
-    if time_column is None:
-        return "错误：在Excel文件中找不到时间列（可能是'发现时间'或'Detection Time'）"
-
-    # 数据清洗和预处理
-    df = df.dropna(how='all')
-
-    # 转换时间列
+    # 转换时间列 - 明确指定格式为 YYYY-MM-DD HH:MM:SS
     try:
-        df[time_column] = pd.to_datetime(df[time_column])
+        df[time_column] = pd.to_datetime(df[time_column], format='%Y-%m-%d %H:%M:%S')
+        print("时间列转换成功")
     except Exception as e:
-        return f"时间列转换错误: {str(e)}"
+        return f"时间列转换错误: {str(e)}\n请确保时间格式为'YYYY-MM-DD HH:MM:SS'"
 
     # 分析威胁数据
     threat_stats = analyze_threats(df, time_column)
@@ -44,48 +37,47 @@ def generate_threat_report(log_file):
 
 
 def analyze_threats(df, time_column):
-    # 定义列名映射（中英文对照）
+    # 定义列名映射
     column_mapping = {
-        'threat_category': ['威胁类别', 'Threat Category'],
-        'threat_name': ['威胁名称', 'Threat Name'],
-        'severity': ['威胁等级', 'Severity Level'],
-        'src_ip': ['源IP', 'Source IP'],
-        'dst_ip': ['目的IP', 'Destination IP'],
-        'dst_port': ['目的端口', 'Destination Port'],
-        'protocol': ['应用层协议', 'Application Protocol']
+        'threat_category': '威胁类别',
+        'threat_name': '威胁名称',
+        'severity': '威胁等级',
+        'src_ip': '源IP',
+        'dst_ip': '目的IP',
+        'dst_port': '目的端口',
+        'protocol': '应用层协议'
     }
 
-    # 查找实际列名
-    actual_columns = {}
-    for key, possible_names in column_mapping.items():
-        for name in possible_names:
-            if name in df.columns:
-                actual_columns[key] = name
-                break
+    # 验证所有需要的列都存在
+    missing_columns = [col for eng, col in column_mapping.items() if col not in df.columns]
+    if missing_columns:
+        raise ValueError(f"缺少必要的列: {', '.join(missing_columns)}")
 
     # 威胁类别统计
     threat_stats = {
         'total_events': len(df),
-        'threat_categories': df[actual_columns['threat_category']].value_counts().to_dict(),
-        'threat_names': df[actual_columns['threat_name']].value_counts().to_dict(),
-        'severity_levels': df[actual_columns['severity']].value_counts().to_dict(),
-        'source_ips': df[actual_columns['src_ip']].value_counts().to_dict(),
-        'destination_ips': df[actual_columns['dst_ip']].value_counts().to_dict(),
+        'threat_categories': df[column_mapping['threat_category']].value_counts().to_dict(),
+        'threat_names': df[column_mapping['threat_name']].value_counts().to_dict(),
+        'severity_levels': df[column_mapping['severity']].value_counts().to_dict(),
+        'source_ips': df[column_mapping['src_ip']].value_counts().to_dict(),
+        'destination_ips': df[column_mapping['dst_ip']].value_counts().to_dict(),
         'time_distribution': defaultdict(int),
         'top_malicious_ips': {},
-        'common_ports': df[actual_columns['dst_port']].value_counts().head(10).to_dict(),
-        'protocols': df[actual_columns['protocol']].value_counts().to_dict()
+        'common_ports': df[column_mapping['dst_port']].value_counts().head(10).to_dict(),
+        'protocols': df[column_mapping['protocol']].value_counts().to_dict()
     }
 
     # 按小时统计事件分布
     for time in df[time_column]:
+        if pd.isna(time):
+            continue  # 跳过空值
         hour = time.hour
         threat_stats['time_distribution'][hour] += 1
 
     # 统计恶意IP
     if 'threat-intelligence-alarm' in threat_stats['threat_categories']:
-        malicious_ips = df[df[actual_columns['threat_category']] == 'threat-intelligence-alarm'][
-            actual_columns['dst_ip']].value_counts().head(5)
+        malicious_ips = df[df[column_mapping['threat_category']] == 'threat-intelligence-alarm'][
+            column_mapping['dst_ip']].value_counts().head(5)
         threat_stats['top_malicious_ips'] = malicious_ips.to_dict()
 
     return threat_stats
@@ -152,22 +144,15 @@ def create_report(threat_stats, df, time_column):
     for port, count in threat_stats['common_ports'].items():
         report += f"  - 端口 {port}: {count} 次\n"
 
-    # 关键发现和建议
-    report += """
-
-    8. 关键发现与建议
-    - 主要威胁类型是恶意域名DNS查询和Tor网络流量
-    - 建议对频繁出现的内网IP进行深入调查
-    - 检测到多个远程控制工具的使用，建议检查是否授权
-    - 检测到VPN和代理工具使用，建议审查网络策略
-    - 建议加强DNS查询监控
-    """
-
     return report
 
 
 def save_visualizations(threat_stats, output_dir="."):
     """生成可视化图表"""
+    # 设置中文字体
+    plt.rcParams['font.sans-serif'] = ['SimHei']  # 使用黑体
+    plt.rcParams['axes.unicode_minus'] = False  # 解决负号显示问题
+
     # 威胁类别分布
     plt.figure(figsize=(10, 6))
     pd.Series(threat_stats['threat_categories']).plot(kind='bar')
@@ -192,20 +177,31 @@ def save_visualizations(threat_stats, output_dir="."):
     plt.close()
 
 
-# 使用示例
 if __name__ == "__main__":
-    log_file = "envet_log-20250707173129.xlsx"
-    report = generate_threat_report(log_file)
+    files = glob.glob("../downloads/*envet_log*.xlsx")
+    if not files:
+        print("❌ ../downloads/ 目录下未找到匹配 'envet_log*.xlsx' 的文件。")
+        exit()
 
-    # 保存报告
-    with open("threat_report.txt", "w", encoding="utf-8") as f:
-        f.write(report)
+    log_file = files[0]
 
-    # 生成可视化图表
-    df = pd.read_excel(log_file, header=0)
-    time_column = '发现时间' if '发现时间' in df.columns else 'Detection Time'
-    threat_stats = analyze_threats(df, time_column)
-    save_visualizations(threat_stats)
+    try:
+        report = generate_threat_report(log_file)
 
-    print("威胁报告已生成: threat_report.txt")
-    print("可视化图表已保存: threat_categories.png 和 time_distribution.png")
+        # 保存报告
+        with open("threat_report.txt", "w", encoding="utf-8") as f:
+            f.write(report)
+
+        # 生成可视化图表
+        df = pd.read_excel(log_file, header=0, engine='openpyxl')
+        time_column = '发现时间'
+        df[time_column] = pd.to_datetime(df[time_column], format='%Y-%m-%d %H:%M:%S')
+        threat_stats = analyze_threats(df, time_column)
+        save_visualizations(threat_stats)
+
+        print("威胁报告已生成: threat_report.txt")
+        print("可视化图表已保存: threat_categories.png 和 time_distribution.png")
+    except Exception as e:
+        print(f"程序运行出错: {str(e)}")
+        print("请检查Excel文件格式和内容是否符合要求")
+        print("时间列格式应为: YYYY-MM-DD HH:MM:SS")
