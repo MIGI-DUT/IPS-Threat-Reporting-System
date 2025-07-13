@@ -126,11 +126,6 @@ def clean_envet_log(file_path):
         if col in df.columns:
             df[col] = df[col].astype(str).apply(lambda x: x.title() if x != 'Unknown' else x)
 
-    # --- 5. 处理嵌套 JSON/扁平化（在 'dns' 和 'desc' 中已部分完成） ---
-    # 如果需要特定的嵌套字段，可以进一步扁平化 'enrichments'
-    # 例如，如果 'enrichments.src_ip.host_type' 是一个字典，您将从中提取。
-    # 根据片段，它们似乎大部分已经扁平化。
-
     # 选择用于可视化的相关列，如果已解析则删除原始复杂列
     columns_to_keep = [
         'timestamp', 'timestamp_ms', 'event_date', 'hour_of_day', 'day_of_week',

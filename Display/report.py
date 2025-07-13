@@ -894,7 +894,7 @@ class EnhancedThreatReportGenerator:  # 确保这一行存在
             # 6. 生成PDF报告
             pdf_file = self.create_pdf_report(threat_stats, chart_files, output_file)
 
-            print(f"✅ 增强版PDF报告已生成: {pdf_file}")
+            print(f"✅ PDF报告已生成: {pdf_file}")
             return pdf_file
 
         except Exception as e:
@@ -906,10 +906,10 @@ if __name__ == "__main__":
     generator = EnhancedThreatReportGenerator()
     try:
         report_file = generator.generate_report('网络安全威胁分析报告.pdf')
-        print(f"\n🎉 增强版报告生成成功！")
+        print(f"\n🎉 报告生成成功！")
         print(f"📄 文件位置: {report_file}")
         print(f"📊 报告包含: 威胁统计、IP分析、时间分布、美化图表、安全建议等")
-        print(f"✨ 新增功能: 风险评分、可视化增强、详细建议、报告总结")
+        print(f"✨ 功能包括: 风险评分、可视化增强、详细建议、报告总结")
     except Exception as e:
         print(f"\n❌ 程序执行失败: {str(e)}")
         print("请检查:")
